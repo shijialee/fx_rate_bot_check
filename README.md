@@ -1,10 +1,15 @@
 # fx-rate-bot
 
-Watches BOC's published AUD→RMB rate (现汇卖出价) and pushes a notification via
-[ntfy.sh](https://ntfy.sh) when it crosses your threshold. Runs entirely on a
-Cloudflare Worker: a Cron Trigger checks every 10 minutes; an `/admin` page
-(protected by Cloudflare Access) lets you edit the condition, pause, and see
-current status.
+Watches BOC's published AUD→RMB rate (现汇卖出价) and pushes a Telegram message
+when it crosses your threshold. Runs entirely on a Cloudflare Worker: a Cron
+Trigger checks every 10 minutes; an `/admin` page (protected by Cloudflare
+Access) lets you edit the condition, pause, and see current status.
+
+Originally used ntfy.sh, but the public ntfy.sh service rate-limits per
+source IP, and Cloudflare Workers share a small egress IP pool across
+*every* Workers customer — so the daily quota was getting exhausted by
+unrelated traffic, not this bot. Telegram's Bot API rate-limits per bot
+token instead, which sidesteps that entirely.
 
 ## How it works
 
@@ -25,8 +30,8 @@ current status.
 
 - **Failures fail loudly**: if the fetch or the parse throws (BOC redesigns
   the page, geo-blocks the request, network error, etc.), that's reported
-  too — same ntfy topic, "AUD rate monitor is broken" title, with the error
-  message. It uses the same backoff schedule as rate alerts, so a
+  too — same Telegram chat, "AUD rate monitor is broken" message, with the
+  error text. It uses the same backoff schedule as rate alerts, so a
   persistently broken page notifies you once immediately and then backs off
   (20 → 40 → ... → 24h) instead of paging you every 10 minutes. Once a check
   succeeds again, the failure streak resets silently (no "recovered"
@@ -55,19 +60,24 @@ npx wrangler kv namespace create FX_KV
 Copy the returned `id` into `wrangler.jsonc` → `kv_namespaces[0].id`
 (currently `REPLACE_WITH_KV_NAMESPACE_ID`).
 
-### 3. Pick an ntfy topic and set it as a secret
+### 3. Create a Telegram bot and get your chat id
 
-Topic name is your shared secret for the public ntfy.sh broker — anyone who
-knows it can read your alerts, so make it unguessable:
-
-```sh
-openssl rand -hex 8   # e.g. 3f9a1c2e7b4d6081 -> topic "fx-aud-3f9a1c2e7b4d6081"
-npx wrangler secret put NTFY_TOPIC
-# paste: fx-aud-3f9a1c2e7b4d6081
-```
-
-Install the [ntfy app](https://ntfy.sh/#subscribe) on your phone and
-subscribe to that exact topic name.
+1. Message [@BotFather](https://t.me/BotFather) on Telegram, send `/newbot`,
+   follow the prompts. It gives you a bot token like
+   `123456789:AAF...xyz` — this is a secret, treat it like a password.
+2. Message your new bot anything (e.g. "hi") to open a chat with it —
+   Telegram won't deliver to a chat that doesn't exist yet.
+3. Find your chat id:
+   ```sh
+   curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates"
+   ```
+   Look for `"chat":{"id":123456789,...}` in the response — that number is
+   your `TELEGRAM_CHAT_ID`.
+4. Set both as Worker secrets:
+   ```sh
+   npx wrangler secret put TELEGRAM_BOT_TOKEN
+   npx wrangler secret put TELEGRAM_CHAT_ID
+   ```
 
 ### 4. Deploy
 
@@ -81,13 +91,13 @@ Note the URL it prints, `https://fx-rate-bot.<your-subdomain>.workers.dev`.
 
 In the Cloudflare dashboard:
 
-1. **Zero Trust → Settings → Authentication → Login methods**: confirm
-   **One-time PIN** is enabled (it is by default — no IdP setup needed).
-2. **Zero Trust → Access → Applications → Add an application → Self-hosted**.
-3. **Application domain**: `fx-rate-bot.<your-subdomain>.workers.dev`,
+1. **Zero Trust → Access Controls → Applications → Add an application → Self-hosted / Worker**.
+2. In the next screen, setup the following **Application details**
+3. **domain**: `fx-rate-bot.<your-subdomain>.workers.dev`,
    path `/admin*`.
 4. **Policy**: Action `Allow`, Include → Emails → your email address.
-5. Save.
+5. **Authentication → Choose Identity providers**: check **One-time PIN**.
+6. Save.
 
 Now `https://fx-rate-bot.<your-subdomain>.workers.dev/admin` prompts for an
 email OTP before it ever reaches the Worker.
@@ -100,7 +110,7 @@ you've configured it.
 
 ## Operating it
 
-- **Edit condition / pause / check status**: `/admin` page.
+- **Edit condition / pause / check status / log level**: `/admin` page.
 - **Force a check without waiting for cron**: `POST /admin/api/run-now`
   (also behind Access) — returns the resulting config+state JSON.
 - **Logs**: `npx wrangler tail` while a cron tick or manual check runs. Verbosity
@@ -117,7 +127,7 @@ you've configured it.
 ## Local development
 
 ```sh
-cp .dev.vars.example .dev.vars   # set a throwaway NTFY_TOPIC for testing
+cp .dev.vars.example .dev.vars   # fill in a test bot token + your chat id
 npx wrangler dev
 # in another shell:
 curl -X POST localhost:8787/admin/api/config -H 'content-type: application/json' \
