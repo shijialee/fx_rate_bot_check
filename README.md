@@ -103,7 +103,13 @@ you've configured it.
 - **Edit condition / pause / check status**: `/admin` page.
 - **Force a check without waiting for cron**: `POST /admin/api/run-now`
   (also behind Access) — returns the resulting config+state JSON.
-- **Logs**: `npx wrangler tail` while a cron tick or manual check runs.
+- **Logs**: `npx wrangler tail` while a cron tick or manual check runs. Verbosity
+  is the "Log level" field on `/admin` (stored in KV alongside the rest of the
+  config — takes effect on the very next check, no redeploy): `"debug"` traces
+  every step (fetch, parse, freshness, condition, backoff decision, notify
+  result); `"info"` only logs outcomes — freshness, condition result, and any
+  notify attempt/result — skipping the fine-grained trace; `"warn"`/`"error"`
+  are quieter still.
 - **Cron schedule**: fixed at `*/10 * * * *` in `wrangler.jsonc`; change and
   redeploy if you want a different interval — backoff timing is independent
   of this.

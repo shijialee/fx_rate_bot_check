@@ -1,4 +1,5 @@
 import type { Env } from "./env.d.ts";
+import type { LogLevel } from "./logger.ts";
 
 export type Operator = "<=" | ">=";
 
@@ -6,6 +7,8 @@ export interface FxConfig {
   operator: Operator;
   threshold: number;
   paused: boolean;
+  /** editable from /admin, takes effect on the next check — no redeploy needed */
+  logLevel: LogLevel;
 }
 
 export interface FxState {
@@ -36,7 +39,7 @@ const KEY = "fx:aud";
 // you've set a real value from /admin.
 function defaultData(): FxData {
   return {
-    config: { operator: "<=", threshold: 0, paused: true },
+    config: { operator: "<=", threshold: 0, paused: true, logLevel: "debug" },
     state: {
       conditionMet: false,
       notifyCount: 0,

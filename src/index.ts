@@ -2,6 +2,7 @@ import type { Env } from "./env.d.ts";
 import { runCheck } from "./check.ts";
 import { loadData, saveData, type FxConfig } from "./store.ts";
 import { ADMIN_HTML } from "./adminPage.ts";
+import { isLogLevel } from "./logger.ts";
 
 function isOperator(v: unknown): v is FxConfig["operator"] {
   return v === "<=" || v === ">=";
@@ -33,6 +34,7 @@ export default {
         data.config.threshold = body.threshold;
       }
       if (typeof body.paused === "boolean") data.config.paused = body.paused;
+      if (isLogLevel(body.logLevel)) data.config.logLevel = body.logLevel;
 
       await saveData(env.FX_KV, data);
       return Response.json(data);

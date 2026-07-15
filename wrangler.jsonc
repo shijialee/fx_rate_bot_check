@@ -1,22 +1,29 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "fx-rate-bot",
-  "main": "src/index.ts",
-  "compatibility_date": "2025-07-15",
-  "compatibility_flags": ["nodejs_compat"],
-
-  // Runs the rate check every 10 minutes, 24/7. The freshness gate inside
-  // the scheduled handler skips evaluation outside BOC's publish hours.
-  "triggers": {
-    "crons": ["*/10 * * * *"]
-  },
-
-  // Create with: wrangler kv namespace create FX_KV
-  // then paste the returned id below.
-  "kv_namespaces": [
-    {
-      "binding": "FX_KV",
-      "id": "REPLACE_WITH_KV_NAMESPACE_ID"
-    }
-  ]
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "fx-rate-bot",
+	"main": "src/index.ts",
+	"compatibility_date": "2025-07-15",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	// Runs the rate check every 10 minutes, 24/7. The freshness gate inside
+	// the scheduled handler skips evaluation outside BOC's publish hours.
+	"triggers": {
+		"crons": [
+			"*/10 * * * *"
+		]
+	},
+	// Create with: wrangler kv namespace create FX_KV
+	// then paste the returned id below.
+	"kv_namespaces": [
+		{
+			"binding": "FX_KV",
+			"id": "112482fe96a24ed98d1799ad6c037ad0"
+		}
+	],
+	"observability": {
+		"logs": {
+			"enabled": true
+		}
+	}
 }

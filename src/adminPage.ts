@@ -43,6 +43,14 @@ export const ADMIN_HTML = `<!doctype html>
     <label for="paused">Paused (no checks/notifications)</label>
   </div>
 
+  <label for="logLevel">Log level (for wrangler tail / Workers Logs)</label>
+  <select id="logLevel">
+    <option value="debug">debug — full step-by-step trace</option>
+    <option value="info">info — outcomes only</option>
+    <option value="warn">warn — only warnings/errors</option>
+    <option value="error">error — only errors</option>
+  </select>
+
   <button id="save">Save</button>
   <div id="msg"></div>
 </fieldset>
@@ -60,6 +68,7 @@ async function loadConfig() {
   document.getElementById('operator').value = data.config.operator;
   document.getElementById('threshold').value = data.config.threshold;
   document.getElementById('paused').checked = data.config.paused;
+  document.getElementById('logLevel').value = data.config.logLevel;
   renderStatus(data.state);
 }
 
@@ -97,6 +106,7 @@ document.getElementById('save').addEventListener('click', async () => {
     operator: document.getElementById('operator').value,
     threshold: parseFloat(document.getElementById('threshold').value),
     paused: document.getElementById('paused').checked,
+    logLevel: document.getElementById('logLevel').value,
   };
   const res = await fetch('/admin/api/config', {
     method: 'POST',
